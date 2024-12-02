@@ -12,3 +12,8 @@ Nhóm: 10
 |  4  | Phùng Thanh Đăng        |      20210150    |
 |  5  | Nguyễn Trình Tuấn Đạt   |      20210177    |
 
+
+```
+docker-compose up
+
+docker exec -it spark-master bash -c "spark-submit --master spark://spark-master:7077 --jars /opt/spark/jars/postgresql-42.7.4.jar /opt/spark/app/app.py"
