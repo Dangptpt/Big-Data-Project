@@ -23,15 +23,49 @@ class DataTransformationInit:
 
         return df
     
+    def process_premise_data(self, df):
+        premises_monthly = (
+            df.groupBy("PREMISES_TYPE", "OCC_YEAR", "OCC_MONTH")
+            .agg(
+                count("*").alias("total_cases"),
+                sum(when(col("BIKE_COST") != 0, col("BIKE_COST")).otherwise(0)).alias("sum_non_zero"),
+                sum(when(col("BIKE_COST") != 0, 1).otherwise(0)).alias("count_non_zero")
+            )
+            .withColumn(
+                "avg_value",
+                (col("sum_non_zero") / col("count_non_zero")).alias("avg_value")
+            )
+        )
+
+        premise_df = (
+            premises_monthly.select(
+                col("PREMISES_TYPE").alias("type"),
+                col("total_cases").alias("total_cases"),
+                col("avg_value").alias("avg_value"),
+                col("OCC_YEAR").alias("year"),
+                col("OCC_MONTH").alias("month")
+            )
+        )
+
+        return premise_df
+        
     def process_temporal_data(self, df):
         temporal_df = (
             df.groupBy("OCC_HOUR", "OCC_DOW", "OCC_YEAR")
-            .count()
-            .withColumnRenamed("count", "total_cases")
+            .agg(
+                count("*").alias("total_cases"), 
+                sum(when(col("BIKE_COST") != 0, col("BIKE_COST")).otherwise(0)).alias("total_value"),
+                sum(when(col("BIKE_COST") != 0, 1).otherwise(0)).alias("count_non_zero")
+            )
+            .withColumn(
+                "avg_value",
+                (col("total_value") / col("count_non_zero")).alias("avg_value")
+            )
             .select(
-                col("total_cases").alias("count"),
+                col("total_cases").alias("total_cases"),
                 col("OCC_HOUR").alias("hour"),
                 col("OCC_DOW").alias("day_of_week"),
+                col("avg_value").alias("avg_value"),
                 col("OCC_YEAR").alias("year")
             )
         )
@@ -41,8 +75,15 @@ class DataTransformationInit:
         # Group by DIVISION, PREMISES_TYPE, and OCC_YEAR to calculate total cases
         division_yearly = (
             df.groupBy("DIVISION", "PREMISES_TYPE", "OCC_YEAR")
-            .count()
-            .withColumnRenamed("count", "total_cases")
+            .agg(
+                count("*").alias("total_cases"), 
+                sum(when(col("BIKE_COST") != 0, col("BIKE_COST")).otherwise(0)).alias("total_value"),
+                sum(when(col("BIKE_COST") != 0, 1).otherwise(0)).alias("count_non_zero")
+            )
+            .withColumn(
+                "avg_value",
+                (col("total_value") / col("count_non_zero")).alias("avg_value")
+            )
         )
 
         # Calculate average total cases for each DIVISION and PREMISES_TYPE across all years
@@ -58,8 +99,9 @@ class DataTransformationInit:
             .select(
                 col("DIVISION").alias("division"),
                 col("PREMISES_TYPE").alias("premise_type"),
-                col("total_cases").alias("count"),
-                col("OCC_YEAR").alias("year")
+                col("total_cases").alias("total_cases"),
+                col("OCC_YEAR").alias("year"),
+                col("avg_value").alias("avg_value")
             )
         )
 
@@ -69,8 +111,15 @@ class DataTransformationInit:
         # Group by PREMISES_TYPE, OCC_YEAR, and OCC_MONTH to calculate total cases
         premises_monthly = (
             df.groupBy("PREMISES_TYPE", "OCC_YEAR", "OCC_MONTH")
-            .count()
-            .withColumnRenamed("count", "total_cases")
+            .agg(
+                count("*").alias("total_cases"), 
+                sum(when(col("BIKE_COST") != 0, col("BIKE_COST")).otherwise(0)).alias("total_value"),
+                sum(when(col("BIKE_COST") != 0, 1).otherwise(0)).alias("count_non_zero")
+            )
+            .withColumn(
+                "avg_value",
+                (col("total_value") / col("count_non_zero")).alias("avg_value")
+                )
         )
         
         # Join monthly data with average yearly data to compute % change (only based on year)
@@ -78,8 +127,9 @@ class DataTransformationInit:
             premises_monthly
             .select(
                 col("PREMISES_TYPE").alias("type"),
-                col("total_cases").alias("count"),
+                col("total_cases").alias("total_cases"),
                 col("OCC_YEAR").alias("year"),
+                col("avg_value").alias("avg_value"),
                 col("OCC_MONTH").alias("month")
             )
         )
