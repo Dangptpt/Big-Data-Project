@@ -37,7 +37,7 @@ def send_to_hdfs_in_batches():
             print(f"Error sending batch to HDFS: {e}")
         
         batch_index += 1
-        time.sleep(3600)  # 1h/time 
+        time.sleep(15)  # 15s/time 
 
 @app.on_event("startup")
 def schedule_hdfs_upload():

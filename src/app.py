@@ -21,9 +21,11 @@ def main():
     )
 
     try:
-        input_path = "../../spark/app/data/clean_data.csv"
+        # input_path = "../../spark/app/data/clean_data.csv"
         # input_path = "data/clean_data.csv"
-        # input_path = "hdfs://namenode:9000/data/crime"
+        # load all csv files path in hdfs
+        input_path = "hdfs://hdfs-namenode:9000/data"
+        
         crime_df = processor.load_and_prepare_data(input_path)
 
         temporal_df = processor.process_temporal_data(crime_df)
