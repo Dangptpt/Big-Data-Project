@@ -2,7 +2,7 @@ class Config:
     HOST = 'postgres'
     PORT = 5432
     DATABASE = 'crime'
-    USER = 'admin'l
+    USER = 'admin'
     PASSWORD = 'admin'
 
 # class Config:
