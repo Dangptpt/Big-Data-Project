@@ -28,18 +28,23 @@ def main():
         
         crime_df = processor.load_and_prepare_data(input_path)
 
+        premise_df = processor.process_premise_data(crime_df)  
         temporal_df = processor.process_temporal_data(crime_df)
         division_df = processor.process_division_data(crime_df)
         neighbourhood_df = processor.process_neighbourhood_data(crime_df)
+
+        premise_df.show()
         temporal_df.show()
         division_df.show()
         neighbourhood_df.show()
+
         logging.info("Data transformation complete")
         logging.info("Starting data import")
 
-        importer.import_data(temporal_df, "temporal_data")
-        importer.import_data(division_df, "division_data")
-        importer.import_data(neighbourhood_df, "neighbourhood_data")
+        importer.import_data(premise_df, "premise")
+        importer.import_data(temporal_df, "temporal")
+        importer.import_data(division_df, "division")
+        importer.import_data(neighbourhood_df, "neighbourhood")
         logging.info("Data import complete")
     except Exception as e:
         logging.error(f"An error occurred: {e}")

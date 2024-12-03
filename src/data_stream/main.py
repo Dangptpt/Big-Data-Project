@@ -4,7 +4,7 @@ from fastapi import FastAPI, BackgroundTasks
 from hdfs import InsecureClient
 from datetime import datetime
 import time
-from clean_data import clean_bicycle_data
+from utils.clean_data import clean_bicycle_data
 
 app = FastAPI()
 
