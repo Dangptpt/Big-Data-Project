@@ -4,7 +4,6 @@ from fastapi import FastAPI, BackgroundTasks
 from hdfs import InsecureClient
 from datetime import datetime
 import time
-from utils.clean_data import clean_bicycle_data
 
 app = FastAPI()
 
@@ -14,7 +13,8 @@ HDFS_USER = os.environ.get('HDFS_USER', 'root')
 client = InsecureClient(HDFS_URL, user=HDFS_USER)
 
 raw_data = pd.read_csv("data/Bicycle_Thefts.csv")
-cleaned_data = clean_bicycle_data(raw_data)
+# cleaned_data = clean_bicycle_data(raw_data)
+cleaned_data = raw_data
 cleaned_data["OCC_DATE"] = pd.to_datetime(cleaned_data["OCC_DATE"])
 sorted_data = cleaned_data.sort_values(by="OCC_DATE")
 batch_size = 100
