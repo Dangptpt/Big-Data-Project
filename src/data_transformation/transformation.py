@@ -2,8 +2,10 @@ from pyspark.sql import SparkSession
 from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 from pyspark.sql.types import *
-from pyspark.sql.functions import col, when, to_date, datediff, upper, trim, coalesce
-from pyspark.sql.types import DoubleType
+from pyspark.ml.regression import RandomForestRegressor
+from pyspark.ml.feature import VectorAssembler, MinMaxScaler, StandardScaler
+from pyspark.ml.clustering import KMeans
+from pyspark.ml import Pipeline
 
 class DataTransformationInit:
     def __init__(self) -> None:
@@ -189,3 +191,166 @@ class DataTransformationInit:
     def close_spark_session(self):
         self.spark.stop()
 
+    def process_security_data(self, df):
+        # 0. Clean data - replace nulls with 0
+        df = df.withColumn("BIKE_COST", coalesce(col("BIKE_COST"), lit(0)))
+
+        # 1. Initial aggregation
+        ml_df = df.groupBy(
+            "OCC_YEAR",
+            "OCC_MONTH",
+            "DIVISION"
+        ).agg(
+            count("BIKE_COST").alias("case_count"),
+            sum("BIKE_COST").alias("total_cost"),
+            avg("BIKE_COST").alias("avg_cost")
+        ).orderBy(
+            "OCC_YEAR",
+            "OCC_MONTH"
+        )
+             
+        # 2. Add normalized columns at the end
+        window = Window.partitionBy()
+        final_df = ml_df
+
+        for col_name in ["case_count", "total_cost"]:
+            min_val = min(col(col_name)).over(window)
+            max_val = max(col(col_name)).over(window)
+            norm_col = f"normalized_{col_name}"
+            
+            final_df = final_df.withColumn(
+                norm_col, 
+                (col(col_name) - min_val) / (max_val - min_val)
+            )
+        final_df = final_df.withColumn("coefficient", col("normalized_case_count") + col("normalized_total_cost"))
+        
+        return final_df
+    
+    def create_monthly_division_summary(self, df):
+        
+        result_df = df.groupBy(
+            "OCC_MONTH",
+            "DIVISION"
+        ).agg(
+            count("*").alias("total_cases"),
+        )
+
+        return result_df
+
+    def security_risk_clustering(self, df):
+        # Initial aggregation
+        df = df.withColumn("BIKE_COST", coalesce(col("BIKE_COST"), lit(0)))
+        
+        spark_df = df.groupBy("DIVISION").agg(
+            count("BIKE_COST").alias("case_count"),
+            sum("BIKE_COST").alias("total_cost")
+        )
+
+        # Prepare features for clustering
+        assembler = VectorAssembler(
+            inputCols=["case_count", "total_cost"],
+            outputCol="features"
+        )
+        
+        df_features = assembler.transform(spark_df)
+
+        # Standardize features
+        scaler = StandardScaler(
+            inputCol="features",
+            outputCol="scaled_features",
+            withStd=True,
+            withMean=True
+        )
+        
+        scaler_model = scaler.fit(df_features)
+        df_scaled = scaler_model.transform(df_features)
+
+        # Apply KMeans clustering
+        kmeans = KMeans(
+            k=4,
+            featuresCol="scaled_features",
+            predictionCol="cluster"
+        )
+        
+        model = kmeans.fit(df_scaled)
+        df_clustered = model.transform(df_scaled)
+
+        # Calculate risk scores based on cluster centers magnitude
+        centers = model.clusterCenters()
+        # Calculate magnitude of each cluster center
+        magnitudes = [float(np.linalg.norm(center)) for center in centers]
+        # Create mapping from cluster index to risk level (0-5)
+        risk_mapping = dict(enumerate(np.argsort(magnitudes)))
+
+        # Create UDF for mapping clusters to risk levels
+        @udf(IntegerType())
+        def get_risk_level(cluster_id):
+            return int(risk_mapping[cluster_id])
+
+        # Apply mapping and select final columns
+        result_df = df_clustered.select(
+            "DIVISION",
+            get_risk_level(col("cluster")).alias("SECURITY_LEVEL"),
+            col("case_count").alias("CASE_COUNT"),
+            col("total_cost").alias("TOTAL_COST")
+        ).orderBy("DIVISION")
+
+        return result_df
+
+    # def security_risk_clustering(self, df):
+    #     # Initial aggregation remains same
+    #     df = df.withColumn("BIKE_COST", coalesce(col("BIKE_COST"), lit(0)))
+        
+    #     spark_df = df.groupBy("DIVISION").agg(
+    #         count("BIKE_COST").alias("case_count"),
+    #         sum("BIKE_COST").alias("total_cost")
+    #     )
+
+    #     # Get min and max values for normalization
+    #     stats = spark_df.agg(
+    #         min("case_count").alias("min_cases"),
+    #         max("case_count").alias("max_cases"),
+    #         min("total_cost").alias("min_cost"),
+    #         max("total_cost").alias("max_cost")
+    #     ).collect()[0]
+
+    #     # Add normalized columns using min-max scaling
+    #     normalized_df = spark_df.withColumn(
+    #         "normalized_case_count",
+    #         (col("case_count") - stats.min_cases) / (stats.max_cases - stats.min_cases)
+    #     ).withColumn(
+    #         "normalized_total_cost",
+    #         (col("total_cost") - stats.min_cost) / (stats.max_cost - stats.min_cost)
+    #     )
+
+    #     # Prepare features for clustering
+    #     assembler = VectorAssembler(
+    #         inputCols=["normalized_case_count", "normalized_total_cost"],
+    #         outputCol="features"
+    #     )
+        
+    #     df_features = assembler.transform(normalized_df)
+
+    #     # KMeans clustering
+    #     kmeans = KMeans(k=4, featuresCol="features", predictionCol="cluster")
+    #     model = kmeans.fit(df_features)
+    #     df_clustered = model.transform(df_features)
+
+    #     # Risk mapping remains same
+    #     centers = model.clusterCenters()
+    #     magnitudes = [float(np.linalg.norm(center)) for center in centers]
+    #     risk_mapping = dict(enumerate(np.argsort(magnitudes)))
+
+    #     @udf(IntegerType())
+    #     def get_risk_level(cluster_id):
+    #         return int(risk_mapping[cluster_id])
+
+    #     # Final result with normalized values
+    #     result_df = df_clustered.select(
+    #         "DIVISION",
+    #         get_risk_level(col("cluster")).alias("CLUSTERING"),
+    #         col("normalized_case_count").alias("NORMALIZED_CASE_COUNT"),
+    #         col("normalized_total_cost").alias("NORMALIZED_TOTAL_COST")
+    #     ).orderBy("DIVISION")
+
+    #     return result_df

@@ -63,7 +63,7 @@ services:
     volumes:
       - ./hdfs-data/datanode-1:/hadoop/dfs/data
     ports:
-      - "50075:50075"
+      - "40081:40080"
 
   hdfs-datanode-2:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
@@ -75,8 +75,7 @@ services:
     volumes:
       - ./hdfs-data/datanode-2:/hadoop/dfs/data
     ports:
-      - "50076:50075"
-
+      - "40082:40080"
   hdfs-datanode-3:
     image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
     container_name: hdfs-datanode-3
@@ -87,7 +86,7 @@ services:
     volumes:
       - ./hdfs-data/datanode-3:/hadoop/dfs/data
     ports:
-      - "50077:50075"
+      - "40083:40080"
 
   bicycle-data-service:
     build: 

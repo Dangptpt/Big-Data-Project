@@ -21,10 +21,10 @@ def main():
     )
 
     try:
-        input_path = "../../spark/app/data/clean_data.csv"
+        # input_path = "../../spark/app/data/clean_data.csv"
         # input_path = "data/clean_data.csv"
         # load all csv files path in hdfs
-        # input_path = "hdfs://hdfs-namenode:9000/data"
+        input_path = "hdfs://hdfs-namenode:9000/data"
         
         crime_df = processor.load_and_prepare_data(input_path)
 
@@ -32,6 +32,9 @@ def main():
         temporal_df = processor.process_temporal_data(crime_df)
         division_df = processor.process_division_data(crime_df)
         neighbourhood_df = processor.process_neighbourhood_data(crime_df)
+        
+        security_risk_df = processor.security_risk_clustering(crime_df)
+        month_division_df = processor.create_monthly_division_summary(crime_df)
 
         crime_df.show()
         premise_df.show()
@@ -39,6 +42,8 @@ def main():
         division_df.show()
         neighbourhood_df.show()
 
+        security_risk_df.show()
+        month_division_df.show()
 
         logging.info("Data transformation complete")
         logging.info("Starting data import")
@@ -48,6 +53,10 @@ def main():
         importer.import_data(temporal_df, "temporal")
         importer.import_data(division_df, "division")
         importer.import_data(neighbourhood_df, "neighbourhood")
+
+        importer.import_data(security_risk_df, "security_clustering")
+        importer.import_data(month_division_df, "monthly_division")
+
 
         logging.info("Data import complete")
     except Exception as e:

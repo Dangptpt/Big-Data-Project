@@ -16,4 +16,6 @@ Nhóm: 10
 ```
 docker-compose up
 
+docker exec -it spark-master bash -c "pip install numpy" 
+
 docker exec -it spark-master bash -c "spark-submit --master spark://spark-master:7077 --jars /opt/spark/jars/postgresql-42.7.4.jar /opt/spark/app/app.py"
