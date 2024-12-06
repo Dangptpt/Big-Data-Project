@@ -1,59 +1,64 @@
-import os
-import pandas as pd
 from fastapi import FastAPI, HTTPException, BackgroundTasks
-from hdfs import InsecureClient
+import pandas as pd
 from datetime import datetime
+from hdfs import InsecureClient
+import os
 
 app = FastAPI()
 
 HDFS_URL = os.environ.get('HDFS_URL', 'http://hdfs-namenode:9000')
 HDFS_USER = os.environ.get('HDFS_USER', 'root')
-
 client = InsecureClient(HDFS_URL, user=HDFS_USER)
 
 raw_data = pd.read_csv("data/Bicycle_Thefts.csv")
-# cleaned_data = clean_bicycle_data(raw_data)
-cleaned_data = raw_data
+cleaned_data = raw_data  
 cleaned_data["OCC_DATE"] = pd.to_datetime(cleaned_data["OCC_DATE"])
 sorted_data = cleaned_data.sort_values(by="OCC_DATE")
-batch_size = 100
-batch_index = 0
 
-def send_to_hdfs_in_background(batch_index: int):
-    global sorted_data, batch_size
-    start = batch_index * batch_size
-    end = min((batch_index + 1) * batch_size, len(sorted_data))
 
-    if start >= len(sorted_data):
-        print("All batches have been sent to HDFS.")
-        return
+def send_to_hdfs_in_background(filtered_data: pd.DataFrame, hdfs_path: str):
+    try:
+        with client.write(hdfs_path, encoding="utf-8") as writer:
+            filtered_data.to_csv(writer, index=False)
+        print(f"Data successfully sent to HDFS at {hdfs_path}")
+    except Exception as e:
+        print(f"Error sending data to HDFS: {e}")
 
-    batch_data = sorted_data.iloc[start:end]
-    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-    hdfs_path = f"/data/bicycle_thefts_batch_{batch_index}_{timestamp}.csv"
+
+@app.post("/send_data_by_date")
+def send_data_by_date(
+    date: str, 
+    background_tasks: BackgroundTasks
+):
+    global sorted_data
 
     try:
-        with client.write(hdfs_path, encoding='utf-8') as writer:
-            batch_data.to_csv(writer, index=False)
-        print(f"Batch {batch_index} sent to HDFS successfully.")
-    except Exception as e:
-        print(f"Error sending batch {batch_index} to HDFS: {e}")
-
-@app.post("/send_batch")
-def send_batch(background_tasks: BackgroundTasks):
-    global batch_index
-    if batch_index * batch_size >= len(sorted_data):
-        return {"message": "All batches have been sent to HDFS."}
+        query_date = pd.to_datetime(date)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use yyyy-mm-dd.")
     
-    # Schedule the task in the background
-    background_tasks.add_task(send_to_hdfs_in_background, batch_index)
-    response = {
-        "message": f"Batch {batch_index} is being sent to HDFS in the background.",
-        "batch_index": batch_index,
-    }
-    batch_index += 1
-    return response
+    if sorted_data["OCC_DATE"].dtype == 'O':  # Kiểm tra nếu là object (str)
+        sorted_data["OCC_DATE"] = pd.to_datetime(sorted_data["OCC_DATE"])
+    
+    # Lọc dữ liệu xảy ra trong ngày được cung cấp
+    filtered_data = sorted_data[
+        sorted_data["OCC_DATE"].dt.date == query_date.date()
+    ]
 
-@app.get("/health")
-def health_check():
-    return {"status": "healthy"}
+    # Trả về 404 nếu không có dữ liệu
+    if len(filtered_data) == 0:
+        raise HTTPException(status_code=404, detail=f"No data found for the specified date: {date}.")
+
+    # Tạo đường dẫn lưu trữ trên HDFS
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    hdfs_path = f"/data/bicycle_thefts_{query_date.strftime('%Y%m%d')}_{timestamp}.csv"
+
+    # Gửi dữ liệu raw lên HDFS
+    background_tasks.add_task(send_to_hdfs_in_background, filtered_data, hdfs_path)
+
+    # Trả về phản hồi
+    return {
+        "message": f"Data for date {date} is being sent to HDFS in the background.",
+        "date": date,
+        "hdfs_path": hdfs_path,
+    }
