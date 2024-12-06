@@ -37,26 +37,21 @@ def send_data_by_date(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format. Use yyyy-mm-dd.")
     
-    if sorted_data["OCC_DATE"].dtype == 'O':  # Kiểm tra nếu là object (str)
+    if sorted_data["OCC_DATE"].dtype == 'O': 
         sorted_data["OCC_DATE"] = pd.to_datetime(sorted_data["OCC_DATE"])
     
-    # Lọc dữ liệu xảy ra trong ngày được cung cấp
     filtered_data = sorted_data[
         sorted_data["OCC_DATE"].dt.date == query_date.date()
     ]
 
-    # Trả về 404 nếu không có dữ liệu
     if len(filtered_data) == 0:
         raise HTTPException(status_code=404, detail=f"No data found for the specified date: {date}.")
 
-    # Tạo đường dẫn lưu trữ trên HDFS
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     hdfs_path = f"/data/bicycle_thefts_{query_date.strftime('%Y%m%d')}_{timestamp}.csv"
 
-    # Gửi dữ liệu raw lên HDFS
     background_tasks.add_task(send_to_hdfs_in_background, filtered_data, hdfs_path)
 
-    # Trả về phản hồi
     return {
         "message": f"Data for date {date} is being sent to HDFS in the background.",
         "date": date,
