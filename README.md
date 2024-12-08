@@ -13,7 +13,15 @@ Nhóm: 10
 |  5  | Nguyễn Trình Tuấn Đạt   |      20210177    |
 
 
+1. **First run**
 ```
-docker-compose up
+docker-compose up --build -d
+```
+2. **To send data to HDFS you can do any of two ways below**
+* Assess localhost 8080 to send data to HDFS using fast API docs
+* access (fill date you want to send data to HDFS): http://localhost:8000/send_data_by_date?date={**date**}
 
+3. **RUN spark to process data then send to Postgres DB**
+```
 docker exec -it spark-master bash -c "spark-submit --master spark://spark-master:7077 --jars /opt/spark/jars/postgresql-42.7.4.jar /opt/spark/app/app.py"
+```

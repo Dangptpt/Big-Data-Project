@@ -1,0 +1,7 @@
+# data_ingestion_service/requirements.txt
+fastapi
+uvicorn
+pandas
+pyarrow
+python-multipart
+hdfs

@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-pandas
-pyarrow
-hdfs3
-python-multipart
-hdfs
