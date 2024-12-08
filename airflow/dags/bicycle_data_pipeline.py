@@ -1,9 +1,7 @@
 from airflow import DAG
 from airflow.providers.http.operators.http import SimpleHttpOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
-from airflow.operators.python import PythonOperator
 from datetime import datetime, timedelta, date
-import requests
 
 processing_date = date.today().strftime("%Y-%m-%d")
 
@@ -18,7 +16,7 @@ default_args = {
 }
 with DAG(
     dag_id='bicycle_data_pipeline',
-    schedule_interval="0 0 1 * *",
+    schedule_interval="0 0 * * *",
     default_args=default_args,
     catchup=False,
     tags=['bicycle_data', 'hdfs', 'spark', 'postgres'],
