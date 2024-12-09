@@ -34,11 +34,9 @@ def main():
         temporal_df.show()
         division_df.show()
         neighbourhood_df.show()
+        security_risk_df.show()
+        month_division_df.show()
 
-        security_risk_df.show()
-        month_division_df.show()
-        security_risk_df.show()
-        month_division_df.show()
 
         logging.info("Data transformation complete")
         logging.info("Starting data import")
@@ -48,11 +46,6 @@ def main():
         importer.import_data(temporal_df, "temporal")
         importer.import_data(division_df, "division")
         importer.import_data(neighbourhood_df, "neighbourhood")
-
-        importer.import_data(security_risk_df, "security_clustering")
-        importer.import_data(month_division_df, "monthly_division")
-
-
         importer.import_data(security_risk_df, "security_clustering")
         importer.import_data(month_division_df, "monthly_division")
 
