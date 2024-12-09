@@ -11,10 +11,11 @@ processing_date = date.today().strftime("%Y-%m-%d")
 def branch_decision(**kwargs):
     ti = kwargs['ti']
     task_state = ti.xcom_pull(task_ids='send_data_to_hdfs', key='return_value')
-    if task_state:
-        return 'process_data_with_spark'
-    else:
+    print(task_state)
+    if task_state == "false":
         return 'skip_task'
+    else:
+        return 'process_data_with_spark'
 
 default_args = {
     "depends_on_past": False,
@@ -22,8 +23,8 @@ default_args = {
     "email": ["dangptpt@gmail.com"],
     "email_on_failure": False,
     "email_on_retry": False,
-    "retries": 3,
-    "retry_delay": 60,
+    "retries": 1,
+    "retry_delay": 5,
 }
 with DAG(
     dag_id='bicycle_data_pipeline',
@@ -40,7 +41,7 @@ with DAG(
         headers={"Content-Type": "application/json"},
         response_check=lambda response: response.status_code == 200,
         log_response=True,
-        retries=3,
+        retries=0,
         retry_delay=timedelta(minutes=2),
     )
 
@@ -52,7 +53,7 @@ with DAG(
     
     process_data_with_spark = SparkSubmitOperator(
         task_id='process_data_with_spark',
-        application='/opt/spark/app/app.py',  
+        application='/opt/spark/app/app.py',
         conn_id='spark_default',
         executor_cores=2,
         executor_memory='1g',

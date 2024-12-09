@@ -43,7 +43,8 @@ def send_data_by_date(
     ]
 
     if len(filtered_data) == 0:
-        raise HTTPException(status_code=404, detail=f"No data found for the specified date: {date}.")
+        # raise HTTPException(status_code=404, detail=f"No data found for the specified date: {date}.")
+        return False
 
     # Tạo đường dẫn HDFS với timestamp
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
