@@ -133,7 +133,7 @@ class DataTransformationInit:
         return temporal_df
     
     def process_division_data(self, df):
-        division_yearly = (
+        division_df = (
             df.groupBy("DIVISION", "PREMISES_TYPE", "OCC_YEAR")
             .agg(
                 count("*").alias("total_cases"), 
@@ -144,16 +144,6 @@ class DataTransformationInit:
                 "avg_value",
                 (col("total_value") / col("count_non_zero")).alias("avg_value")
             )
-        )
-
-        average_by_division = (
-            division_yearly.groupBy("DIVISION", "PREMISES_TYPE")
-            .agg(avg("total_cases").alias("average_cases"))
-        )
-
-        division_df = (
-            division_yearly.join(average_by_division, on=["DIVISION", "PREMISES_TYPE"])
-            .withColumn("change", (col("total_cases") - col("average_cases")) / col("average_cases") * 100)
             .select(
                 col("DIVISION").alias("division"),
                 col("PREMISES_TYPE").alias("premise_type"),
@@ -166,8 +156,8 @@ class DataTransformationInit:
         return division_df
     
     def process_neighbourhood_data(self, df):
-        premises_monthly = (
-            df.groupBy("PREMISES_TYPE", "OCC_YEAR", "OCC_MONTH")
+        neighbourhood_df = (
+            df.groupBy("NEIGHBOURHOOD_158", "PREMISES_TYPE", "OCC_YEAR")
             .agg(
                 count("*").alias("total_cases"), 
                 sum(when(col("BIKE_COST") != 0, col("BIKE_COST")).otherwise(0)).alias("total_value"),
@@ -176,17 +166,13 @@ class DataTransformationInit:
             .withColumn(
                 "avg_value",
                 (col("total_value") / col("count_non_zero")).alias("avg_value")
-                )
-        )
-        
-        neighbourhood_df = (
-            premises_monthly
+            )
             .select(
-                col("PREMISES_TYPE").alias("type"),
+                col("NEIGHBOURHOOD_158").alias("neighbourhood"),
+                col("PREMISES_TYPE").alias("premise_type"),
                 col("total_cases").alias("total_cases"),
                 col("OCC_YEAR").alias("year"),
-                col("avg_value").alias("avg_value"),
-                col("OCC_MONTH").alias("month")
+                col("avg_value").alias("avg_value")
             )
         )
 
