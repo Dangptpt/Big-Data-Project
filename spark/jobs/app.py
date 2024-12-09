@@ -1,5 +1,5 @@
-from transformation.transformation import DataTransformationInit
-from loader.loader import DataImporter
+from transformation import DataTransformationInit
+from loader import DataImporter
 from config import Config
 import logging
 

@@ -32,8 +32,7 @@ with DAG(
         retries=3,
         retry_delay=timedelta(minutes=2),
     )
-
-
+    
     process_data_with_spark = SparkSubmitOperator(
         task_id='process_data_with_spark',
         application='/opt/spark/app/app.py',  
