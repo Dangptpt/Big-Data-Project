@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 import pandas as pd
 from datetime import datetime
 import os
+import logging
 from .utils import send_to_hdfs
 
 app = FastAPI()
@@ -30,7 +31,8 @@ def send_data_by_date(
     try:
         query_date = pd.to_datetime(date)
     except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid date format. Use yyyy-mm-dd.")
+        logging.error("Invalid date format. Use yyyy-mm-dd.")
+        return False
     
     # Kiểm tra và chuyển đổi kiểu dữ liệu nếu cần
     if sorted_data["OCC_DATE"].dtype == 'O': 
@@ -43,7 +45,7 @@ def send_data_by_date(
     ]
 
     if len(filtered_data) == 0:
-        # raise HTTPException(status_code=404, detail=f"No data found for the specified date: {date}.")
+        logging.error(f"No data found for date {date}.")
         return False
 
     # Tạo đường dẫn HDFS với timestamp
