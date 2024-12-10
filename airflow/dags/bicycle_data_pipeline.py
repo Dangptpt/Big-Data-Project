@@ -5,8 +5,8 @@ from datetime import datetime, timedelta, date
 from airflow.operators.dummy import DummyOperator
 from airflow.operators.python import BranchPythonOperator
 
-processing_date = date.today().strftime("%Y-%m-%d")
-# processing_date = '2024-06-28'
+# processing_date = date.today().strftime("%Y-%m-%d")
+processing_date = '2024-06-28'
 
 def branch_decision(**kwargs):
     ti = kwargs['ti']
