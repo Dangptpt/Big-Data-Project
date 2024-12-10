@@ -60,3 +60,36 @@ def send_data_by_date(
         "date": date,
         "hdfs_path": hdfs_path,
     }
+
+@app.post("/send_data_before_date")
+def send_data_before_date(
+    date: str,
+    background_tasks: BackgroundTasks
+):
+    global sorted_data
+
+    try:
+        query_date = pd.to_datetime(date)
+    except ValueError:
+        logging.error("Invalid date format. Use yyyy-mm-dd.")
+        return False
+    
+    if sorted_data["OCC_DATE"].dtype == 'O': 
+        sorted_data["OCC_DATE"] = pd.to_datetime(sorted_data["OCC_DATE"], errors='coerce')
+        sorted_data = sorted_data.dropna(subset=["OCC_DATE"])
+    
+    filtered_data = sorted_data[
+        sorted_data["OCC_DATE"].dt.date < query_date.date()
+    ]
+
+    if len(filtered_data) == 0:
+        logging.error(f"No data found before date {date}.")
+        return False
+
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+    hdfs_path = f"/data/bicycle_thefts_before_{query_date.strftime('%Y%m%d')}_{timestamp}.csv"
+
+    background_tasks.add_task(send_to_hdfs_in_background, filtered_data, hdfs_path)
+
+    logging.info(f"Data before {date} is being sent to HDFS at {hdfs_path}.")
+    return True
